@@ -8,11 +8,11 @@ This project was developed as part of the IST 687 - Introduction to Data Science
 
 ## 🎯 Objectives
 
-- **🔮 Develop a Predictive Model to forecast residential energy consumption (heating and cooling) in South Carolina homes for the month of July.
+- 🔮 Develop a Predictive Model to forecast residential energy consumption (heating and cooling) in South Carolina homes for the month of July.
 
-- **🔍 Identify Key Drivers of energy usage by analyzing structured datasets including weather data, home characteristics, and energy usage.
+- 🔍 Identify Key Drivers of energy usage by analyzing structured datasets including weather data, home characteristics, and energy usage.
 
-- **📊 Deliver Visual Insights via an interactive Shiny application, enabling better decision-making and more effective energy management.
+- 📊 Deliver Visual Insights via an interactive Shiny application, enabling better decision-making and more effective energy management.
 
 ---
 
