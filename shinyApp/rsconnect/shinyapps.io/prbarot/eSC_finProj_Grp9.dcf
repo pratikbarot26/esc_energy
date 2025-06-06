@@ -1,0 +1,12 @@
+name: eSC_finProj_Grp9
+title: eSC_finProj_Grp9
+username: prbarot
+account: prbarot
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 11913396
+bundleId: 8565241
+url: https://prbarot.shinyapps.io/eSC_finProj_Grp9/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

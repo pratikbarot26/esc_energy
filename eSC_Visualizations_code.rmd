@@ -1,0 +1,109 @@
+---
+title: "Visualizations"
+author: "PratikBarot"
+date: "2024-04-24"
+output: pdf_document
+---
+
+
+```{r}
+dfVizHouse <- housesDF %>%  select(in.income, in.sqft, in.bedrooms, in.heating_fuel, in.hvac_heating_type, in.hvac_cooling_efficiency,
+                                   in.hvac_heating_efficiency, in.insulation_wall, in.insulation_ceiling, in.insulation_floor,
+                                   in.windows,in.clothes_washer, in.dishwasher, in.refrigerator, in.water_heater_fuel,
+                                   in.water_heater_efficiency, in.cooling_setpoint, in.heating_setpoint,bldg_id)
+
+set.seed(47)
+dfVizHouse <- dfVizHouse[sample(1:nrow(dfVizHouse),40),]
+```
+
+
+```{r}
+dfVizNrg <- sampleEnergy[1==0,]
+
+for(i in dfVizHouse$bldg_id)
+{
+  temp1 <- paste0("https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/2023-houseData/",as.character(i),".parquet")
+  # temp1 <- paste0("https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/2023-houseData/%s.parquet")
+  temp <- read_parquet(temp1)
+  temp$bldg_id <- i
+  dfVizNrg <- rbind(dfVizNrg,temp)
+}
+```
+
+```{r}
+dfVizNrg$out_total_energy <- dfVizNrg$out.electricity.ceiling_fan.energy_consumption +
+  dfVizNrg$out.electricity.clothes_dryer.energy_consumption + 
+  dfVizNrg$out.electricity.clothes_washer.energy_consumption +
+  dfVizNrg$out.electricity.cooling_fans_pumps.energy_consumption +
+  dfVizNrg$out.electricity.cooling.energy_consumption +
+  dfVizNrg$out.electricity.dishwasher.energy_consumption +
+  dfVizNrg$out.electricity.freezer.energy_consumption +
+  dfVizNrg$out.electricity.heating_fans_pumps.energy_consumption +
+  dfVizNrg$out.electricity.heating_hp_bkup.energy_consumption +
+  dfVizNrg$out.electricity.heating.energy_consumption +
+  dfVizNrg$out.electricity.hot_tub_heater.energy_consumption +
+  dfVizNrg$out.electricity.hot_tub_pump.energy_consumption +
+  dfVizNrg$out.electricity.hot_water.energy_consumption +
+  dfVizNrg$out.electricity.lighting_exterior.energy_consumption +
+  dfVizNrg$out.electricity.lighting_garage.energy_consumption +
+  dfVizNrg$out.electricity.lighting_interior.energy_consumption +
+  dfVizNrg$out.electricity.mech_vent.energy_consumption +
+  dfVizNrg$out.electricity.plug_loads.energy_consumption +
+  dfVizNrg$out.electricity.pool_heater.energy_consumption +
+  dfVizNrg$out.electricity.pool_pump.energy_consumption +
+  dfVizNrg$out.electricity.pv.energy_consumption +
+  dfVizNrg$out.electricity.range_oven.energy_consumption +
+  dfVizNrg$out.electricity.refrigerator.energy_consumption +
+  dfVizNrg$out.electricity.well_pump.energy_consumption + 
+  dfVizNrg$out.natural_gas.clothes_dryer.energy_consumption +
+  dfVizNrg$out.natural_gas.fireplace.energy_consumption +
+  dfVizNrg$out.natural_gas.grill.energy_consumption +
+  dfVizNrg$out.natural_gas.heating_hp_bkup.energy_consumption +
+  dfVizNrg$out.natural_gas.heating.energy_consumption +
+  dfVizNrg$out.natural_gas.hot_tub_heater.energy_consumption +
+  dfVizNrg$out.natural_gas.hot_water.energy_consumption +
+  dfVizNrg$out.natural_gas.lighting.energy_consumption +
+  dfVizNrg$out.natural_gas.pool_heater.energy_consumption +
+  dfVizNrg$out.natural_gas.range_oven.energy_consumption +
+  dfVizNrg$out.propane.clothes_dryer.energy_consumption +
+  dfVizNrg$out.propane.heating_hp_bkup.energy_consumption +
+  dfVizNrg$out.propane.heating.energy_consumption +
+  dfVizNrg$out.propane.hot_water.energy_consumption +
+  dfVizNrg$out.propane.range_oven.energy_consumption +
+  dfVizNrg$out.fuel_oil.heating_hp_bkup.energy_consumption +
+  dfVizNrg$out.fuel_oil.heating.energy_consumption +
+  dfVizNrg$out.fuel_oil.hot_water.energy_consumption
+```
+
+```{r}
+dfVizNrg1 <- dfVizNrg %>% dplyr::select(time,bldg_id,out_total_energy)
+VizDF <- merge(dfVizHouse,dfVizNrg1,by.x="bldg_id",by.y="bldg_id")
+```
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+
+VizDF1 <- VizDF %>% group_by(in.income) %>% summarize(out_total_energy = mean(out_total_energy, na.rm = TRUE))
+
+ggplot(data=VizDF1) + aes(x=in.income,y=out_total_energy,fill=in.income) + geom_col() +
+  ggtitle("Average 6 hourly Energy Consumption per House by Income") + xlab("Income") +
+  ylab("Energy Consumption") + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+```{r}
+ggplot(VizDF2, aes(x = "", y = out_total_energy, fill = in.heating_fuel)) + 
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar(theta = "y") + # Convert to polar coordinates
+  theme_void() +  # Clean up the plot
+  labs(title = "Energy Consumption by Fuel Type", y = "Total Energy", fill = "Heating Fuel")
+```
+
+
+```{r}
+VizDF3 <- newHouseMerged %>% group_by(`Dry Bulb Temperature [°C]`) %>% summarize(out_total_energy = mean(out_total_energy, na.rm = TRUE))
+ggplot(data=VizDF3) + aes(x=`Dry Bulb Temperature [°C]`, y=out_total_energy) + geom_point(color="blue") + theme_minimal() +
+  geom_smooth(method = "nls", formula = y ~ a * x^2 + b * x + c, method.args = list(start = list(a = 1, b = 1, c = 1)), se = FALSE, size = 2, color = "orange") +
+  ggtitle("Average 6 hourly Energy Consumption per house based on Temperature") + ylab("Energy Consumption")
+```
+

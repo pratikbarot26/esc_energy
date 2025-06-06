@@ -1,0 +1,79 @@
+---
+title: "IDS_Project_new_Modelling"
+author: "PratikBarot"
+date: "2024-03-15"
+output: pdf_document
+---
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+```
+
+```{r}
+hvacMerged <- read_csv("C:/Users/pmbar/OneDrive/Desktop/Syracuse/2024Spring/IST687/Project/Datasets/hvacMerged.csv")
+hvacMerged$date <- substr(hvacMerged$date,1,10)
+hvacMerged$date <- as.POSIXct(hvacMerged$date, format = "%Y-%m-%d")
+```
+
+```{r}
+cols1 <- c("in.sqft","in.bedrooms","in.infiltration","in.insulation_roof","in.occupants",
+          "in.geometry_wall_type","in.vintage","in.usage_level","in.hvac_heating_type",
+          "in.hvac_cooling_type","out_hvac_electricity","out_total_energy","out_hvac_non_electric",
+          "Dry Bulb Temperature [°C]", "Relative Humidity [%]", "Wind Speed [m/s]", 
+          "Global Horizontal Radiation [W/m2]", "Direct Normal Radiation [W/m2]",
+          "Diffuse Horizontal Radiation [W/m2]", "date", "time_quarter")
+
+summarizedData <- hvacMerged[,cols1] %>%
+  group_by(date,time_quarter, in.sqft, in.bedrooms, in.infiltration, in.insulation_roof,
+           in.occupants, in.geometry_wall_type, in.vintage, in.usage_level, in.hvac_heating_type,
+           in.hvac_cooling_type) %>%
+  summarize(
+    out_total_energy = sum(out_total_energy, na.rm = TRUE),
+    out_hvac_electricity = sum(out_hvac_electricity, na.rm = TRUE),
+    out_hvac_non_electric = sum(out_hvac_non_electric, na.rm = TRUE),
+    `Dry Bulb Temperature [°C]` = mean(`Dry Bulb Temperature [°C]`, na.rm = TRUE),
+    `Relative Humidity [%]` = mean(`Relative Humidity [%]`, na.rm = TRUE),
+    `Wind Speed [m/s]` = mean(`Wind Speed [m/s]`, na.rm = TRUE),
+    `Global Horizontal Radiation [W/m2]` = mean(`Global Horizontal Radiation [W/m2]`, na.rm = TRUE),
+    `Direct Normal Radiation [W/m2]` = mean(`Direct Normal Radiation [W/m2]`, na.rm = TRUE),
+    `Diffuse Horizontal Radiation [W/m2]` = mean(`Diffuse Horizontal Radiation [W/m2]`, na.rm = TRUE)
+  )
+
+```
+
+```{r}
+summarizedData
+hvacMerged
+```
+
+```{r}
+cols2 <- c("time","in.county","bldg_id","date")
+# testDF <- summarizedData[, !colnames(summarizedData) %in% cols2]
+```
+
+```{r}
+# write_csv(testDF,"C:/Users/pmbar/OneDrive/Desktop/Syracuse/2024Spring/IST687/Project/Datasets/testData.csv")
+```
+
+
+```{r}
+library(lubridate)
+train_data <- summarizedData[month(summarizedData$date) %in% c(1,4,6,9), !colnames(summarizedData) %in% cols2]
+test_data <- summarizedData[month(summarizedData$date)==7, !colnames(summarizedData) %in% cols2]
+```
+
+```{r}
+write_csv(train_data,"C:/Users/pmbar/OneDrive/Desktop/Syracuse/2024Spring/IST687/Project/Datasets/train_data.csv")
+write_csv(test_data,"C:/Users/pmbar/OneDrive/Desktop/Syracuse/2024Spring/IST687/Project/Datasets/test_data.csv")
+```
+
+```{r}
+test_train <- summarizedData[month(summarizedData$date) %in% c(1,4,6,7,9), !colnames(summarizedData) %in% cols2]
+write_csv(test_data,"C:/Users/pmbar/OneDrive/Desktop/Syracuse/2024Spring/IST687/Project/Datasets/test_train.csv")
+```
+
+
+
+
+

@@ -1,0 +1,187 @@
+---
+title: "Project_new"
+author: "PratikBarot"
+date: "2024-03-14"
+output: pdf_document
+---
+
+```{r}
+library(tidyverse)
+library(arrow)
+library(httr)
+library(xgboost)
+library(e1071)
+```
+
+```{r}
+housesDF <- read_parquet("https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/static_house_info.parquet")
+sampleEnergy <- read_parquet("https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/2023-houseData/102063.parquet")
+sampleWeather <- read_csv("https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/weather/2023-weather-data/G4500450.csv")
+```
+
+```{r}
+dfFilterHouse <- housesDF %>% filter(housesDF$in.sqft==1690 & in.bedrooms==3 & in.infiltration=="15 ACH50" &
+                    in.geometry_wall_type=="Wood Frame" & in.insulation_roof== "Unfinished, Uninsulated",
+                    in.windows=="Single, Clear, Metal")
+```
+
+```{r}
+sampleEnergy$bldg_id <- 0
+dfEnergy <- sampleEnergy[1==0,]
+
+for(i in dfFilterHouse$bldg_id)
+{
+  temp1 <- paste0("https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/2023-houseData/",as.character(i),".parquet")
+  # temp1 <- paste0("https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/2023-houseData/%s.parquet")
+  temp <- read_parquet(temp1)
+  temp$bldg_id <- i
+  dfEnergy <- rbind(dfEnergy,temp)
+}
+```
+
+
+```{r}
+dfWeather <- sampleWeather[1==0,]
+dfWeather$county_id <- 0
+for(i in dfFilterHouse$in.county)
+{
+  url <- paste0("https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/weather/2023-weather-data/",as.character(i),".csv")
+  # temp1 <- paste0("https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/2023-houseData/%s.csv")
+  # response <- GET(url, user_agent("Mozilla/5.0"))
+  temp <- read_csv(url)
+  temp$county_id <- i
+  dfWeather <- rbind(dfWeather,temp)
+}
+```
+
+```{r}
+dfEnergy$out_total_energy <- dfEnergy$out.electricity.ceiling_fan.energy_consumption +
+  dfEnergy$out.electricity.clothes_dryer.energy_consumption + 
+  dfEnergy$out.electricity.clothes_washer.energy_consumption +
+  dfEnergy$out.electricity.cooling_fans_pumps.energy_consumption +
+  dfEnergy$out.electricity.cooling.energy_consumption +
+  dfEnergy$out.electricity.dishwasher.energy_consumption +
+  dfEnergy$out.electricity.freezer.energy_consumption +
+  dfEnergy$out.electricity.heating_fans_pumps.energy_consumption +
+  dfEnergy$out.electricity.heating_hp_bkup.energy_consumption +
+  dfEnergy$out.electricity.heating.energy_consumption +
+  dfEnergy$out.electricity.hot_tub_heater.energy_consumption +
+  dfEnergy$out.electricity.hot_tub_pump.energy_consumption +
+  dfEnergy$out.electricity.hot_water.energy_consumption +
+  dfEnergy$out.electricity.lighting_exterior.energy_consumption +
+  dfEnergy$out.electricity.lighting_garage.energy_consumption +
+  dfEnergy$out.electricity.lighting_interior.energy_consumption +
+  dfEnergy$out.electricity.mech_vent.energy_consumption +
+  dfEnergy$out.electricity.plug_loads.energy_consumption +
+  dfEnergy$out.electricity.pool_heater.energy_consumption +
+  dfEnergy$out.electricity.pool_pump.energy_consumption +
+  dfEnergy$out.electricity.pv.energy_consumption +
+  dfEnergy$out.electricity.range_oven.energy_consumption +
+  dfEnergy$out.electricity.refrigerator.energy_consumption +
+  dfEnergy$out.electricity.well_pump.energy_consumption + 
+  dfEnergy$out.natural_gas.clothes_dryer.energy_consumption +
+  dfEnergy$out.natural_gas.fireplace.energy_consumption +
+  dfEnergy$out.natural_gas.grill.energy_consumption +
+  dfEnergy$out.natural_gas.heating_hp_bkup.energy_consumption +
+  dfEnergy$out.natural_gas.heating.energy_consumption +
+  dfEnergy$out.natural_gas.hot_tub_heater.energy_consumption +
+  dfEnergy$out.natural_gas.hot_water.energy_consumption +
+  dfEnergy$out.natural_gas.lighting.energy_consumption +
+  dfEnergy$out.natural_gas.pool_heater.energy_consumption +
+  dfEnergy$out.natural_gas.range_oven.energy_consumption +
+  dfEnergy$out.propane.clothes_dryer.energy_consumption +
+  dfEnergy$out.propane.heating_hp_bkup.energy_consumption +
+  dfEnergy$out.propane.heating.energy_consumption +
+  dfEnergy$out.propane.hot_water.energy_consumption +
+  dfEnergy$out.propane.range_oven.energy_consumption +
+  dfEnergy$out.fuel_oil.heating_hp_bkup.energy_consumption +
+  dfEnergy$out.fuel_oil.heating.energy_consumption +
+  dfEnergy$out.fuel_oil.hot_water.energy_consumption
+```
+
+```{r}
+dfEnergy$out_hvac_non_electric <-  dfEnergy$out.natural_gas.heating_hp_bkup.energy_consumption +
+  dfEnergy$out.natural_gas.heating.energy_consumption +
+  dfEnergy$out.natural_gas.hot_tub_heater.energy_consumption +
+  dfEnergy$out.natural_gas.hot_water.energy_consumption +
+  dfEnergy$out.natural_gas.pool_heater.energy_consumption +
+  dfEnergy$out.propane.heating_hp_bkup.energy_consumption +
+  dfEnergy$out.propane.heating.energy_consumption +
+  dfEnergy$out.propane.hot_water.energy_consumption +
+  dfEnergy$out.fuel_oil.heating_hp_bkup.energy_consumption +
+  dfEnergy$out.fuel_oil.heating.energy_consumption +
+  dfEnergy$out.fuel_oil.hot_water.energy_consumption
+```
+
+```{r}
+dfEnergy$out_hvac_electricity <-   dfEnergy$out.electricity.cooling_fans_pumps.energy_consumption +
+  dfEnergy$out.electricity.cooling.energy_consumption +
+  dfEnergy$out.electricity.heating_fans_pumps.energy_consumption +
+  dfEnergy$out.electricity.heating_hp_bkup.energy_consumption +
+  dfEnergy$out.electricity.heating.energy_consumption +
+  dfEnergy$out.electricity.hot_tub_heater.energy_consumption +
+  dfEnergy$out.electricity.hot_water.energy_consumption +
+  dfEnergy$out.electricity.pool_heater.energy_consumption
+```
+
+```{r}
+cols1 <- c("bldg_id", "in.county", "in.sqft", "in.bedrooms", "in.infiltration", 
+           "in.insulation_roof", "in.occupants", "in.geometry_wall_type",
+           "in.vintage", "in.usage_level", "in.hvac_heating_type", "in.hvac_cooling_type")
+
+dfFilter1 <- dfFilterHouse[,cols1]
+dfEnergy1 <- dfEnergy %>% dplyr::select(time,bldg_id,out_hvac_electricity,out_hvac_non_electric,out_total_energy)
+```
+
+
+
+
+```{r}
+energyMerged <- merge(dfFilter1,dfEnergy1,by.x="bldg_id",by.y="bldg_id")
+newHouseMerged <- merge(energyMerged,dfWeather,by.x=c("time","in.county"),by.y=c("date_time","county_id"))
+```
+
+
+```{r}
+newHouseMerged$date <- substr(newHouseMerged$time,1,10)
+newHouseMerged$time <- substr(newHouseMerged$time,12,13)
+newHouseMerged$date <- as.POSIXct(newHouseMerged$date, format = "%Y-%m-%d")
+newHouseMerged$time <- as.numeric(newHouseMerged$time)
+newHouseMerged$time[is.na(newHouseMerged$time)] <- 0
+```
+
+```{r}
+get_quarter <- function(time) {
+    if (time >= 4 & time < 10) {
+        return("Morning")
+    } else if (time >= 10 & time < 16) {
+        return("Noon")
+    } else if (time >= 16 & time < 22) {
+        return("Evening")
+    } else {
+        return("Night")
+    }
+}
+```
+
+```{r}
+newHouseMerged <- newHouseMerged %>%
+  mutate(time_quarter = sapply(time, get_quarter))
+```
+
+```{r}
+newHouseMerged <- separate(newHouseMerged, in.infiltration, into = "in.infiltration", sep=" ")
+#Keeping the values for air leakage, units for all are ACH50
+newHouseMerged$in.infiltration <- as.integer(newHouseMerged$in.infiltration)
+#Converting infiltration to integer value for regression analysis
+newHouseMerged$in.vintage[newHouseMerged$in.vintage=="<1940"] <- "1940s"
+#Winsorizing the vintage value below 1940 to 1940
+newHouseMerged$in.vintage <- as.integer(substr(newHouseMerged$in.vintage,1,4))
+#Converting the in.vintage value to integer for regression analysis
+```
+
+
+```{r}
+write_csv(newHouseMerged,"C:/Users/pmbar/OneDrive/Desktop/Syracuse/2024Spring/IST687/Project/Datasets/hvacMerged.csv")
+```
+

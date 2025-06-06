@@ -1,0 +1,100 @@
+---
+title: "Modelling"
+author: "PratikBarot"
+date: "2024-04-18"
+output: html_document
+---
+
+```{r}
+mean(newHouseMerged[month(newHouseMerged$date)==7,"Dry Bulb Temperature [°C]"])
+mean(newHouseMerged[month(newHouseMerged$date) %in% c(4,6),"Dry Bulb Temperature [°C]"])
+```
+```{r}
+#colnames(dfWeather)
+colsWeather <- c("Dry Bulb Temperature [°C]", "Relative Humidity [%]", "Wind Speed [m/s]", "Wind Direction [Deg]", "Global Horizontal Radiation [W/m2]", "Direct Normal Radiation [W/m2]", "Diffuse Horizontal Radiation [W/m2]")
+```
+
+```{r}
+predDiff <- data.frame(colMeans(newHouseMerged[month(newHouseMerged$date)==7,colsWeather], na.rm = TRUE) - colMeans(newHouseMerged[month(newHouseMerged$date) %in% c(4,6),colsWeather], na.rm = TRUE))
+```
+
+
+```{r}
+set.seed(111)
+test_train <- test_train[sample(nrow(test_train)), ]
+train_index <- sample(1:nrow(test_train), 0.8 * nrow(test_train))  # 80% for training
+train1 <- test_train[train_index, ]
+test1 <- test_train[-train_index, ]
+```
+
+```{r}
+lm_model_Energy <- lm(out_total_energy ~ time_quarter + in.occupants + in.vintage +
+                in.usage_level + in.hvac_heating_type + in.hvac_cooling_type + 
+                out_hvac_electricity + out_hvac_non_electric + `Dry Bulb Temperature [°C]` +
+                `Relative Humidity [%]` + `Wind Speed [m/s]` + 
+                `Global Horizontal Radiation [W/m2]` + `Direct Normal Radiation [W/m2]` + 
+                `Diffuse Horizontal Radiation [W/m2]`, 
+                data = train1)
+summary(lm_model_Energy)
+```
+
+
+```{r}
+lm_model_Elec <- lm(out_hvac_electricity ~ time_quarter + in.occupants + in.vintage +
+                in.usage_level + in.hvac_heating_type + in.hvac_cooling_type + 
+                out_total_energy + out_hvac_non_electric + `Dry Bulb Temperature [°C]` +
+                  `Relative Humidity [%]`, `Wind Speed [m/s]` + 
+                  `Global Horizontal Radiation [W/m2]` + `Direct Normal Radiation [W/m2]` +
+                  `Diffuse Horizontal Radiation [W/m2]`, data = train_data)
+summary(lm_model_Elec)
+
+```
+
+```{r}
+# Fit your linear model
+lm_model_NonElec <- lm(out_hvac_non_electric ~ time_quarter + in.occupants + in.vintage +
+                in.usage_level + in.hvac_heating_type + in.hvac_cooling_type + 
+                out_hvac_electricity + out_total_energy + `Dry Bulb Temperature [°C]` +
+                  `Relative Humidity [%]`, `Wind Speed [m/s]` + 
+                  `Global Horizontal Radiation [W/m2]` + `Direct Normal Radiation [W/m2]` +
+                  `Diffuse Horizontal Radiation [W/m2]`, data = train_data)
+summary(lm_model_NonElec)
+```
+
+
+
+```{r}
+pred1 <- predict(lm_model_Energy,test1)
+df1 <- data.frame(Predicted = pred1, Actual=test1$out_total_energy)
+df1$PercentageError <- (df1$Actual-df1$Predicted)/df1$Actual*100
+rmse <- sqrt(mean((df1$Actual-df1$Predicted)^2))
+# rmse
+# mean(df1$Actual)
+# mean(df1$Predicted)
+data.frame(RMSE = rmse, Actual = mean(df1$Actual), Predicted = mean(df1$Predicted))
+```
+
+
+
+```{r}
+test_new_july <- test_data
+test_new_july$`Dry Bulb Temperature [°C]` <- test_new_july$`Dry Bulb Temperature [°C]`+ 5
+test_new_july$`Relative Humidity [%]`<- test_new_july$`Relative Humidity [%]` + predDiff[2,]
+test_new_july$`Wind Speed [m/s]`<- test_new_july$`Wind Speed [m/s]` + predDiff[3,]
+test_new_july$`Global Horizontal Radiation [W/m2]` <- test_new_july$`Global Horizontal Radiation [W/m2]` + predDiff[5,]
+test_new_july$`Direct Normal Radiation [W/m2]` <- test_new_july$`Direct Normal Radiation [W/m2]` + predDiff[6,]
+test_new_july$`Diffuse Horizontal Radiation [W/m2]` <- test_new_july$`Diffuse Horizontal Radiation [W/m2]` + predDiff[7,]
+```
+
+```{r}
+write_csv(test_new_july,"C:/Users/pmbar/OneDrive/Desktop/Syracuse/2024Spring/IST687/Project/Datasets/testJuly.csv")
+```
+
+```{r}
+July5deg <- predict(lm_model_Energy,test_new_july)
+data.frame(AvgEnergyConsumption = mean(July5deg))
+```
+
+
+
+
