@@ -95,5 +95,5 @@ This project provides ESC Electrical with a robust framework for forecasting res
 - R: tidyverse, ggplot2, xgboost, shiny
 - RStudio: Development environment for building models and the Shiny app
 - Git/GitHub: Version control and collaboration
-- Machine Learning: XGBoost, Linear Regression
+- Machine Learning: Linear Regression, SVM, XGBoost
 - Data Visualization: Shiny for interactive dashboards
